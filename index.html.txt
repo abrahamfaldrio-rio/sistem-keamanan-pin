@@ -1,0 +1,35 @@
+function submitPin() {
+    if (isProcessing || inputPin.length === 0) return;
+
+    const status = document.getElementById('status-message');
+    const submitBtn = document.getElementById('btn-submit');
+
+    isProcessing = true;
+    submitBtn.disabled = true;
+    status.innerText = "MENCATAT LOG...";
+    status.className = "text-xs text-amber-400 h-5 mt-1 font-mono font-bold tracking-wider animate-pulse";
+
+    const pinAttempt = inputPin;
+    const isAccessGranted = (pinAttempt === SECRET_PIN);
+    const statusText = isAccessGranted ? "AKSES DITERIMA" : "AKSES DITOLAK";
+
+    // Masukkan URL /exec Google Apps Script Anda di sini
+    const SCRIPT_URL = "SALIN_URL_EXEC_GOOGLE_APPS_SCRIPT_ANDA_DI_SINI";
+
+    if (SCRIPT_URL !== "SALIN_URL_EXEC_GOOGLE_APPS_SCRIPT_ANDA_DI_SINI") {
+        fetch(SCRIPT_URL, {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pin: pinAttempt, status: statusText })
+        })
+        .then(() => {
+            handleValidationUI(isAccessGranted);
+        })
+        .catch(() => {
+            handleValidationUI(isAccessGranted);
+        });
+    } else {
+        setTimeout(() => handleValidationUI(isAccessGranted), 500);
+    }
+}
