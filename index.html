@@ -7,37 +7,105 @@
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-900 text-white min-h-screen flex flex-col items-center justify-center">
+<body class="bg-slate-900 text-white min-h-screen flex flex-col items-center justify-center font-sans">
 
-    <!-- TAMPILAN UTAMA / UI ANDA DI SINI -->
-    <div class="p-6 bg-slate-800 rounded-xl shadow-xl text-center">
-        <h1 class="text-xl font-bold mb-4">OTENTIKASI PIN</h1>
-        <video id="webcam" autoplay playsinline width="320" height="240" class="rounded-lg mb-4 border border-slate-700"></video>
-        <div id="status-message" class="text-xs text-amber-400 h-5 mt-1 font-mono font-bold">SIAP</div>
-        <button id="btn-submit" onclick="submitPin()" class="mt-4 px-6 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-bold">SUBMIT</button>
+    <!-- KOTAK UTAMA SISTEM -->
+    <div class="p-6 bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 w-80 text-center">
+        <h1 class="text-lg font-bold tracking-wider mb-4 text-slate-200">OTENTIKASI PIN</h1>
+        
+        <!-- PRATINJAU KAMERA (Live Webcam) -->
+        <div class="relative w-full h-48 bg-slate-900 rounded-xl overflow-hidden mb-4 border border-slate-700 flex items-center justify-center">
+            <video id="webcam" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover"></video>
+        </div>
+
+        <!-- LAYAR TAMPILAN PIN -->
+        <div id="pin-display" class="bg-slate-900 border border-slate-700 rounded-xl py-3 px-4 mb-4 text-2xl font-mono tracking-widest text-amber-400 min-h-[50px] flex items-center justify-center">
+            ____
+        </div>
+
+        <!-- TOMBOL KEYPAD ANGKA -->
+        <div class="grid grid-cols-3 gap-2 mb-4">
+            <button onclick="pressNum('1')" class="bg-slate-700 hover:bg-slate-600 active:bg-slate-500 py-3 rounded-lg font-bold text-lg transition">1</button>
+            <button onclick="pressNum('2')" class="bg-slate-700 hover:bg-slate-600 active:bg-slate-500 py-3 rounded-lg font-bold text-lg transition">2</button>
+            <button onclick="pressNum('3')" class="bg-slate-700 hover:bg-slate-600 active:bg-slate-500 py-3 rounded-lg font-bold text-lg transition">3</button>
+            <button onclick="pressNum('4')" class="bg-slate-700 hover:bg-slate-600 active:bg-slate-500 py-3 rounded-lg font-bold text-lg transition">4</button>
+            <button onclick="pressNum('5')" class="bg-slate-700 hover:bg-slate-600 active:bg-slate-500 py-3 rounded-lg font-bold text-lg transition">5</button>
+            <button onclick="pressNum('6')" class="bg-slate-700 hover:bg-slate-600 active:bg-slate-500 py-3 rounded-lg font-bold text-lg transition">6</button>
+            <button onclick="pressNum('7')" class="bg-slate-700 hover:bg-slate-600 active:bg-slate-500 py-3 rounded-lg font-bold text-lg transition">7</button>
+            <button onclick="pressNum('8')" class="bg-slate-700 hover:bg-slate-600 active:bg-slate-500 py-3 rounded-lg font-bold text-lg transition">8</button>
+            <button onclick="pressNum('9')" class="bg-slate-700 hover:bg-slate-600 active:bg-slate-500 py-3 rounded-lg font-bold text-lg transition">9</button>
+            <button onclick="clearPin()" class="bg-rose-900/50 hover:bg-rose-800 text-rose-300 py-3 rounded-lg font-bold text-sm transition">C</button>
+            <button onclick="pressNum('0')" class="bg-slate-700 hover:bg-slate-600 active:bg-slate-500 py-3 rounded-lg font-bold text-lg transition">0</button>
+            <button onclick="backspacePin()" class="bg-amber-900/50 hover:bg-amber-800 text-amber-300 py-3 rounded-lg font-bold text-sm transition">⌫</button>
+        </div>
+
+        <!-- STATUS & TOMBOL SUBMIT -->
+        <div id="status-message" class="text-xs text-slate-400 h-5 mb-2 font-mono font-bold tracking-wider">MASUKKAN PIN</div>
+        
+        <button id="btn-submit" onclick="submitPin()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 rounded-xl font-bold tracking-wide transition shadow-lg">
+            KIRIM & CATAT
+        </button>
     </div>
 
     <script>
-        // Konfigurasi Variabel
-        const SECRET_PIN = "123456"; // Sesuaikan PIN Anda
-        let inputPin = "123456";    // Contoh uji coba
+        // --- KONFIGURASI ---
+        const SECRET_PIN = "123456"; // Atur PIN rahasia Anda di sini
+        const SCRIPT_URL = "SALIN_URL_EXEC_GOOGLE_APPS_SCRIPT_ANDA_DI_SINI"; // Ganti dengan URL /exec Apps Script Anda
+        
+        let inputPin = "";
         let isProcessing = false;
 
-        // Inisialisasi Kamera (Otomatis menyala di luar iframe)
+        // 1. Inisialisasi Kamera (Webcam)
         async function startCamera() {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true });
                 const videoElement = document.getElementById('webcam');
-                videoElement.srcObject = stream;
+                if (videoElement) {
+                    videoElement.srcObject = stream;
+                }
             } catch (err) {
-                console.error("Akses kamera ditolak: ", err);
+                console.error("Akses kamera ditolak atau tidak tersedia: ", err);
+                document.getElementById('status-message').innerText = "KAMERA TIDAK AKTIF";
+                document.getElementById('status-message').className = "text-xs text-rose-500 h-5 mb-2 font-mono font-bold";
             }
         }
         startCamera();
 
-        // Fungsi Submit PIN
-        function submitPin() {
+        // 2. Fungsi Input Keypad
+        function pressNum(num) {
             if (isProcessing) return;
+            if (inputPin.length < 6) {
+                inputPin += num;
+                updateDisplay();
+            }
+        }
+
+        function clearPin() {
+            if (isProcessing) return;
+            inputPin = "";
+            updateDisplay();
+        }
+
+        function backspacePin() {
+            if (isProcessing) return;
+            inputPin = inputPin.slice(0, -1);
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            const display = document.getElementById('pin-display');
+            if (inputPin.length === 0) {
+                display.innerText = "____";
+                display.className = "bg-slate-900 border border-slate-700 rounded-xl py-3 px-4 mb-4 text-2xl font-mono tracking-widest text-slate-500 min-h-[50px] flex items-center justify-center";
+            } else {
+                display.innerText = "*".repeat(inputPin.length);
+                display.className = "bg-slate-900 border border-slate-700 rounded-xl py-3 px-4 mb-4 text-2xl font-mono tracking-widest text-amber-400 min-h-[50px] flex items-center justify-center";
+            }
+        }
+
+        // 3. Fungsi Submit & Kirim Log ke Google Sheets
+        function submitPin() {
+            if (isProcessing || inputPin.length === 0) return;
 
             const status = document.getElementById('status-message');
             const submitBtn = document.getElementById('btn-submit');
@@ -45,14 +113,13 @@
             isProcessing = true;
             submitBtn.disabled = true;
             status.innerText = "MENCATAT LOG...";
+            status.className = "text-xs text-amber-400 h-5 mb-2 font-mono font-bold tracking-wider animate-pulse";
 
             const pinAttempt = inputPin;
             const isAccessGranted = (pinAttempt === SECRET_PIN);
             const statusText = isAccessGranted ? "AKSES DITERIMA" : "AKSES DITOLAK";
 
-            // Ganti dengan URL /exec Google Apps Script Anda
-            const SCRIPT_URL = "SALIN_URL_EXEC_GOOGLE_APPS_SCRIPT_ANDA_DI_SINI";
-
+            // Kirim data via POST ke Google Sheets (Apps Script)
             if (SCRIPT_URL !== "SALIN_URL_EXEC_GOOGLE_APPS_SCRIPT_ANDA_DI_SINI") {
                 fetch(SCRIPT_URL, {
                     method: "POST",
@@ -61,23 +128,43 @@
                     body: JSON.stringify({ pin: pinAttempt, status: statusText })
                 })
                 .then(() => {
-                    alert(statusText);
-                    isProcessing = false;
-                    submitBtn.disabled = false;
-                    status.innerText = "SIAP";
+                    handleResult(isAccessGranted, statusText);
                 })
                 .catch(() => {
-                    isProcessing = false;
-                    submitBtn.disabled = false;
+                    handleResult(isAccessGranted, statusText);
                 });
             } else {
+                // Mode simulasi jika URL belum dipasang
                 setTimeout(() => {
-                    alert(statusText);
-                    isProcessing = false;
-                    submitBtn.disabled = false;
-                    status.innerText = "SIAP";
-                }, 500);
+                    handleResult(isAccessGranted, statusText);
+                }, 800);
             }
+        }
+
+        function handleResult(isGranted, statusText) {
+            const status = document.getElementById('status-message');
+            const submitBtn = document.getElementById('btn-submit');
+            const display = document.getElementById('pin-display');
+
+            if (isGranted) {
+                display.className = "bg-emerald-950 border border-emerald-700 rounded-xl py-3 px-4 mb-4 text-lg font-bold tracking-wider text-emerald-400 min-h-[50px] flex items-center justify-center";
+                display.innerText = "BERHASIL";
+                status.innerText = "AKSES DITERIMA & TERCATAT";
+                status.className = "text-xs text-emerald-400 h-5 mb-2 font-mono font-bold tracking-wider";
+            } else {
+                display.className = "bg-rose-950 border border-rose-700 rounded-xl py-3 px-4 mb-4 text-lg font-bold tracking-wider text-rose-400 min-h-[50px] flex items-center justify-center";
+                display.innerText = "DITOLAK";
+                status.innerText = "AKSES DITOLAK & TERCATAT";
+                status.className = "text-xs text-rose-500 h-5 mb-2 font-mono font-bold tracking-wider";
+            }
+
+            setTimeout(() => {
+                inputPin = "";
+                updateDisplay();
+                submitBtn.disabled = false;
+                status.innerText = "MASUKKAN PIN";
+                status.className = "text-xs text-slate-400 h-5 mb-2 font-mono font-bold tracking-wider";
+            }, 2500);
         }
     </script>
 </body>
