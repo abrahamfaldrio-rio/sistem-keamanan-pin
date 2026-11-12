@@ -1,35 +1,84 @@
-function submitPin() {
-    if (isProcessing || inputPin.length === 0) return;
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Keamanan PIN & Kamera</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex flex-col items-center justify-center">
 
-    const status = document.getElementById('status-message');
-    const submitBtn = document.getElementById('btn-submit');
+    <!-- TAMPILAN UTAMA / UI ANDA DI SINI -->
+    <div class="p-6 bg-slate-800 rounded-xl shadow-xl text-center">
+        <h1 class="text-xl font-bold mb-4">OTENTIKASI PIN</h1>
+        <video id="webcam" autoplay playsinline width="320" height="240" class="rounded-lg mb-4 border border-slate-700"></video>
+        <div id="status-message" class="text-xs text-amber-400 h-5 mt-1 font-mono font-bold">SIAP</div>
+        <button id="btn-submit" onclick="submitPin()" class="mt-4 px-6 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-bold">SUBMIT</button>
+    </div>
 
-    isProcessing = true;
-    submitBtn.disabled = true;
-    status.innerText = "MENCATAT LOG...";
-    status.className = "text-xs text-amber-400 h-5 mt-1 font-mono font-bold tracking-wider animate-pulse";
+    <script>
+        // Konfigurasi Variabel
+        const SECRET_PIN = "123456"; // Sesuaikan PIN Anda
+        let inputPin = "123456";    // Contoh uji coba
+        let isProcessing = false;
 
-    const pinAttempt = inputPin;
-    const isAccessGranted = (pinAttempt === SECRET_PIN);
-    const statusText = isAccessGranted ? "AKSES DITERIMA" : "AKSES DITOLAK";
+        // Inisialisasi Kamera (Otomatis menyala di luar iframe)
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                const videoElement = document.getElementById('webcam');
+                videoElement.srcObject = stream;
+            } catch (err) {
+                console.error("Akses kamera ditolak: ", err);
+            }
+        }
+        startCamera();
 
-    // Masukkan URL /exec Google Apps Script Anda di sini
-    const SCRIPT_URL = "SALIN_URL_EXEC_GOOGLE_APPS_SCRIPT_ANDA_DI_SINI";
+        // Fungsi Submit PIN
+        function submitPin() {
+            if (isProcessing) return;
 
-    if (SCRIPT_URL !== "SALIN_URL_EXEC_GOOGLE_APPS_SCRIPT_ANDA_DI_SINI") {
-        fetch(SCRIPT_URL, {
-            method: "POST",
-            mode: "no-cors",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ pin: pinAttempt, status: statusText })
-        })
-        .then(() => {
-            handleValidationUI(isAccessGranted);
-        })
-        .catch(() => {
-            handleValidationUI(isAccessGranted);
-        });
-    } else {
-        setTimeout(() => handleValidationUI(isAccessGranted), 500);
-    }
-}
+            const status = document.getElementById('status-message');
+            const submitBtn = document.getElementById('btn-submit');
+
+            isProcessing = true;
+            submitBtn.disabled = true;
+            status.innerText = "MENCATAT LOG...";
+
+            const pinAttempt = inputPin;
+            const isAccessGranted = (pinAttempt === SECRET_PIN);
+            const statusText = isAccessGranted ? "AKSES DITERIMA" : "AKSES DITOLAK";
+
+            // Ganti dengan URL /exec Google Apps Script Anda
+            const SCRIPT_URL = "SALIN_URL_EXEC_GOOGLE_APPS_SCRIPT_ANDA_DI_SINI";
+
+            if (SCRIPT_URL !== "SALIN_URL_EXEC_GOOGLE_APPS_SCRIPT_ANDA_DI_SINI") {
+                fetch(SCRIPT_URL, {
+                    method: "POST",
+                    mode: "no-cors",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ pin: pinAttempt, status: statusText })
+                })
+                .then(() => {
+                    alert(statusText);
+                    isProcessing = false;
+                    submitBtn.disabled = false;
+                    status.innerText = "SIAP";
+                })
+                .catch(() => {
+                    isProcessing = false;
+                    submitBtn.disabled = false;
+                });
+            } else {
+                setTimeout(() => {
+                    alert(statusText);
+                    isProcessing = false;
+                    submitBtn.disabled = false;
+                    status.innerText = "SIAP";
+                }, 500);
+            }
+        }
+    </script>
+</body>
+</html>
