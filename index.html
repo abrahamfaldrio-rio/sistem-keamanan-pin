@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Keamanan PIN & Kamera</title>
+    <title>Sistem Keamanan PIN & Face ID</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
@@ -11,11 +11,13 @@
 
     <!-- KOTAK UTAMA SISTEM -->
     <div class="p-6 bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 w-80 text-center">
-        <h1 class="text-lg font-bold tracking-wider mb-4 text-slate-200">OTENTIKASI PIN</h1>
+        <h1 class="text-lg font-bold tracking-wider mb-4 text-slate-200">OTENTIKASI PIN & KAMERA</h1>
         
         <!-- PRATINJAU KAMERA (Live Webcam) -->
         <div class="relative w-full h-48 bg-slate-900 rounded-xl overflow-hidden mb-4 border border-slate-700 flex items-center justify-center">
             <video id="webcam" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover"></video>
+            <!-- Canvas tersembunyi untuk menangkap foto -->
+            <canvas id="snapshot-canvas" class="hidden"></canvas>
         </div>
 
         <!-- LAYAR TAMPILAN PIN -->
@@ -49,8 +51,8 @@
 
     <script>
         // --- KONFIGURASI ---
-        const SECRET_PIN = "123456"; // Atur PIN rahasia Anda di sini
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwT0RODcOfJXYnIMZVMYvZ1x3fpKOD7qcksRhAjlLDmrLqUimgMtPFguwxxUHU6eavMDg/exec"; // Ganti dengan URL /exec Apps Script Anda
+        const SECRET_PIN = "123456"; // PIN rahasia Anda
+        const SCRIPT_URL = "https://"script.google.com/macros/s/AKfycbz6xNyfz3pkYjM-pmhnApbxNAFyxP9ig0zuA3lPC1WKzQzbZKgrFa8Q07mM5Zy5bR67JA/exec"; // Ganti dengan URL /exec Apps Script Anda
         
         let inputPin = "";
         let isProcessing = false;
@@ -64,9 +66,8 @@
                     videoElement.srcObject = stream;
                 }
             } catch (err) {
-                console.error("Akses kamera ditolak atau tidak tersedia: ", err);
+                console.error("Akses kamera ditolak: ", err);
                 document.getElementById('status-message').innerText = "KAMERA TIDAK AKTIF";
-                document.getElementById('status-message').className = "text-xs text-rose-500 h-5 mb-2 font-mono font-bold";
             }
         }
         startCamera();
@@ -103,7 +104,22 @@
             }
         }
 
-        // 3. Fungsi Submit & Kirim Log ke Google Sheets
+        // 3. Fungsi Tangkap Foto (Snapshot / Face ID)
+        function captureSnapshot() {
+            const video = document.getElementById('webcam');
+            const canvas = document.getElementById('snapshot-canvas');
+            
+            canvas.width = video.videoWidth || 320;
+            canvas.height = video.videoHeight || 240;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // Mengubah gambar menjadi teks berformat Base64 (JPEG terkompresi)
+            return canvas.toDataURL('image/jpeg', 0.6);
+        }
+
+        // 4. Fungsi Submit & Kirim Log + Foto ke Google Sheets
         function submitPin() {
             if (isProcessing || inputPin.length === 0) return;
 
@@ -112,12 +128,15 @@
 
             isProcessing = true;
             submitBtn.disabled = true;
-            status.innerText = "MENCATAT LOG...";
+            status.innerText = "MENGECEK & MENYIMPAN...";
             status.className = "text-xs text-amber-400 h-5 mb-2 font-mono font-bold tracking-wider animate-pulse";
 
             const pinAttempt = inputPin;
             const isAccessGranted = (pinAttempt === SECRET_PIN);
             const statusText = isAccessGranted ? "AKSES DITERIMA" : "AKSES DITOLAK";
+            
+            // Ambil foto wajah dari kamera saat tombol submit ditekan
+            const photoBase64 = captureSnapshot();
 
             // Kirim data via POST ke Google Sheets (Apps Script)
             if (SCRIPT_URL !== "SALIN_URL_EXEC_GOOGLE_APPS_SCRIPT_ANDA_DI_SINI") {
@@ -125,7 +144,11 @@
                     method: "POST",
                     mode: "no-cors",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ pin: pinAttempt, status: statusText })
+                    body: JSON.stringify({ 
+                        pin: pinAttempt, 
+                        status: statusText, 
+                        photo: photoBase64 
+                    })
                 })
                 .then(() => {
                     handleResult(isAccessGranted, statusText);
@@ -134,7 +157,6 @@
                     handleResult(isAccessGranted, statusText);
                 });
             } else {
-                // Mode simulasi jika URL belum dipasang
                 setTimeout(() => {
                     handleResult(isAccessGranted, statusText);
                 }, 800);
